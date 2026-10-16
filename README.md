@@ -29,7 +29,7 @@ De aquí se saca la **estructura** del gancho, nunca el texto. Copiar el texto e
 Necesitas Python 3.9 o superior y [ffmpeg](https://ffmpeg.org/download.html) en el PATH (solo para `analizar`).
 
 ```bash
-git clone https://github.com/CristianVrey/analizador-tiktok.git
+git clone https://github.com/andresvrey/analizador-tiktok.git
 cd analizador-tiktok
 pip install -r requirements.txt
 ```
