@@ -1,0 +1,8 @@
+# Salidas del script: metraje bajado y barridos
+metraje/
+radar/
+*.mp4
+*.m4a
+*.wav
+edicion.json
+__pycache__/

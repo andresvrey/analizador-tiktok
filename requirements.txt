@@ -1,0 +1,4 @@
+# Opcional: tapa huecos cuando el embed de TikTok no trae un dato o el MP4
+yt-dlp
+# Opcional: solo para `analizar --gancho`
+faster-whisper
