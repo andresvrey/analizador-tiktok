@@ -89,13 +89,26 @@ def ytdlp():
 
 # --- lectura de las superficies públicas -------------------------------------
 
+# TikTok responde 503 «overload-protect» a ratos, sobre todo en los hashtags
+# grandes. No es un bloqueo: a los pocos segundos la misma URL contesta.
+ESPERAS_REINTENTO = (3, 8, 20)
+
+
 def _pedir(url):
     pet = urllib.request.Request(url, headers={
         "User-Agent": UA,
         "Accept-Language": "es-CO,es;q=0.9,en;q=0.8",
     })
-    with urllib.request.urlopen(pet, timeout=35) as r:
-        return r.read().decode("utf-8", "replace")
+    for espera in ESPERAS_REINTENTO + (None,):
+        try:
+            with urllib.request.urlopen(pet, timeout=35) as r:
+                return r.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            if e.code not in (429, 503) or espera is None:
+                raise
+            print(f"  TikTok respondió {e.code}; reintento en {espera}s",
+                  file=sys.stderr)
+            time.sleep(espera)
 
 
 def _estado_ssr(url):
@@ -304,10 +317,7 @@ def ficha(url, exe=None, sin_ytdlp=False):
 
 # --- metraje -----------------------------------------------------------------
 
-def _playaddr(url):
-    vd = datos_embed(url)
-    if not vd:
-        return None
+def _playaddr(vd):
     urls = ((vd.get("itemInfos") or {}).get("video") or {}).get("urls") or []
     return urls[0] if urls else None
 
@@ -345,10 +355,15 @@ def bajar(url, carpeta, exe=None):
     archivo que finge ser un video.
     """
     os.makedirs(carpeta, exist_ok=True)
-    f = _ficha_embed(url) or {}
-    base = f"{f.get('autor') or 'tiktok'}-{f.get('id') or _id_de(url) or 'video'}"
-    play = _playaddr(url)
-    if play:
+    # Una sola petición al embed: pedirlo dos veces dobla el riesgo de 503.
+    vd = datos_embed(url)
+    autor = ((vd or {}).get("authorInfos") or {}).get("uniqueId")
+    base = f"{autor or 'tiktok'}-{_id_de(url) or 'video'}"
+    play = _playaddr(vd) if vd else None
+    if not vd:
+        print("TikTok no devolvió el embed (o está limitando esta IP). "
+              "Va por yt-dlp.", file=sys.stderr)
+    elif play:
         destino = os.path.join(carpeta, base + ".mp4")
         try:
             tam = _bajar_cdn(play, destino)
@@ -452,8 +467,16 @@ def _gancho(ruta, segundos=15, idioma="es", modelo_whisper="large-v3"):
                     "-ac", "1", "-ar", "16000", recorte],
                    capture_output=True, timeout=300)
     try:
+        # Se le pasa el audio ya decodificado: ffmpeg dejó un WAV mono a
+        # 16 kHz, y así faster-whisper no pasa por PyAV, cuyas versiones
+        # nuevas rompen su decodificador.
+        import wave
+        import numpy as np
+        with wave.open(recorte, "rb") as w:
+            pcm = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+        muestras = pcm.astype(np.float32) / 32768.0
         modelo = WhisperModel(modelo_whisper, device="cpu", compute_type="int8")
-        trozos, _ = modelo.transcribe(recorte, language=idioma, vad_filter=False)
+        trozos, _ = modelo.transcribe(muestras, language=idioma, vad_filter=False)
         return " ".join(t.text.strip() for t in trozos).strip()
     except Exception as e:
         return f"(la transcripción falló: {e})"

@@ -52,6 +52,45 @@ python tiktok.py tag marketingdigital --enriquecer --salida radar
 python tiktok.py analizar https://www.tiktok.com/@cuenta/video/<id> --gancho
 ```
 
+### Ejemplo real
+
+Barrido de `#marketingdigital` y `#emprendimiento` el 2026-10-16 (los tres primeros resultados, captions recortados):
+
+```
+$ python tiktok.py tag marketingdigital emprendimiento --enriquecer --sin-ytdlp
+
+@shtukafx · 109.700.000 vistas · 2.200.000 comp (2.005%) · 73.1x seguidores · 14s
+  publicado 2025-04-28  audio: original sound (original)
+  Reading comments 😂😁😀 #photooftheday #instadaily #explore #explorepage #fyp ...
+
+@soren.chriis · 16.100.000 vistas · 304.100 comp (1.889%) · 48.2x seguidores · 56s
+  publicado 2025-05-26  audio: sonido original (original)
+  7 cosas según los Estoicos para ser mejor persona #brandbuilder #marcapersonal ...
+
+@leonardobeckeryt · 20.400.000 vistas · 135.100 comp (0.662%) · 86.2x seguidores · 58s
+  publicado 2023-08-06  audio: som original (original)
+  Como ganhar dinheiro com TikTok usando o chat gpt em 2023 #chatgpt ...
+```
+
+El segundo tiene menos vistas que el tercero y casi el triple de compartidos por vista: es el que vale estudiar. Así está editado:
+
+```
+$ python tiktok.py analizar https://www.tiktok.com/@soren.chriis/video/7508812492567579926 --gancho --modelo small
+
+soren.chriis-7508812492567579926.mp4
+  56.5s · 576x1024 · 30.0 fps · vertical
+  7 cortes · 7.4/min · plano medio 7.1s
+  primer corte a los 12.7s · 0 cortes en los primeros 3s
+  audio sin pausas 96.5% · nivel medio -24.7 dB · pico -2.2 dB
+  gancho: Chris, dime cuáles son esas siete cosas que debo dejar de hacer, según los
+  estoicos, para ser mejor persona. Pues Dani, la primera es que no te escuchen
+  quejándote, ni siquiera tú mismo...
+```
+
+Un formato de pregunta y respuesta entre dos personas, con pocos cortes (el primero llega a los 12 segundos) y audio continuo: el gancho es la pregunta, no la edición.
+
+### Opciones
+
 `--sin-ytdlp` hace el barrido más rápido usando solo las páginas de TikTok. `--modelo small` hace la transcripción más rápida a cambio de perder algunas palabras. `--idioma en` transcribe ganchos en inglés.
 
 ## Cómo funciona
@@ -65,7 +104,10 @@ Para la edición, ffmpeg detecta los cambios de plano y mide el audio, y faster-
 - **El conteo de cortes es un piso.** La detección por escena ve cuando cambia la imagen; el *jump cut* sobre el mismo encuadre, el recurso más usado en TikTok, no lo ve.
 - **El hashtag devuelve el tope histórico**, no lo de esta semana. Para lo fresco, barre perfiles.
 - **TikTok puede cambiar sus páginas de embed** sin avisar. Si un comando deja de traer videos, eso es lo primero que hay que revisar.
-- TikTok limita por IP. El script espera medio segundo entre peticiones; no lo quites.
+- **TikTok limita por IP, y a ratos responde 503 o 429.** El script espera medio segundo entre peticiones y reintenta tres veces (a los 3, 8 y 20 segundos). Si después de un barrido grande sigue cortando, espera unos minutos: el bloqueo se levanta solo.
+- **yt-dlp es solo respaldo.** En octubre de 2026 falla en TikTok desde algunas conexiones; el script funciona sin él y lo usa únicamente si está disponible.
+- **La primera transcripción baja el modelo de Whisper**: unos 500 MB para `small` y unos 3 GB para `large-v3`. Después queda en caché.
+- **Los hashtags traen ruido.** Un video de humor con `#marketing` entre veinte etiquetas aparece igual. Por eso el barrido se lee, no se copia a ciegas.
 
 ## Uso responsable
 
